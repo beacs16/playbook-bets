@@ -14,13 +14,194 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bets: {
+        Row: {
+          game_id: string
+          id: string
+          odds_id: string
+          placed_at: string
+          potential_payout: number
+          price: number
+          selection_label: string
+          settled_at: string | null
+          stake: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          odds_id: string
+          placed_at?: string
+          potential_payout: number
+          price: number
+          selection_label: string
+          settled_at?: string | null
+          stake: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          odds_id?: string
+          placed_at?: string
+          potential_payout?: number
+          price?: number
+          selection_label?: string
+          settled_at?: string | null
+          stake?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bets_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bets_odds_id_fkey"
+            columns: ["odds_id"]
+            isOneToOne: false
+            referencedRelation: "odds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          away_team: string
+          created_at: string
+          home_team: string
+          id: string
+          league: string
+          sport: string
+          start_time: string
+          status: string
+        }
+        Insert: {
+          away_team: string
+          created_at?: string
+          home_team: string
+          id?: string
+          league: string
+          sport: string
+          start_time: string
+          status?: string
+        }
+        Update: {
+          away_team?: string
+          created_at?: string
+          home_team?: string
+          id?: string
+          league?: string
+          sport?: string
+          start_time?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      odds: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          label: string
+          market: string
+          price: number
+          selection: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          label: string
+          market: string
+          price: number
+          selection: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          label?: string
+          market?: string
+          price?: number
+          selection?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "odds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          balance: number
+          created_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      place_bet: {
+        Args: { p_odds_id: string; p_stake: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
