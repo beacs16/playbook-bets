@@ -9,10 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SportsbookRouteImport } from './routes/sportsbook'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as BetSlipRouteImport } from './routes/bet-slip'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SportsbookRoute = SportsbookRouteImport.update({
+  id: '/sportsbook',
+  path: '/sportsbook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -23,6 +30,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BetSlipRoute = BetSlipRouteImport.update({
+  id: '/bet-slip',
+  path: '/bet-slip',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +43,51 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bet-slip': typeof BetSlipRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/sportsbook': typeof SportsbookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bet-slip': typeof BetSlipRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/sportsbook': typeof SportsbookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bet-slip': typeof BetSlipRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/sportsbook': typeof SportsbookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup'
+  fullPaths: '/' | '/bet-slip' | '/login' | '/signup' | '/sportsbook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup'
-  id: '__root__' | '/' | '/login' | '/signup'
+  to: '/' | '/bet-slip' | '/login' | '/signup' | '/sportsbook'
+  id: '__root__' | '/' | '/bet-slip' | '/login' | '/signup' | '/sportsbook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BetSlipRoute: typeof BetSlipRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  SportsbookRoute: typeof SportsbookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sportsbook': {
+      id: '/sportsbook'
+      path: '/sportsbook'
+      fullPath: '/sportsbook'
+      preLoaderRoute: typeof SportsbookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -75,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bet-slip': {
+      id: '/bet-slip'
+      path: '/bet-slip'
+      fullPath: '/bet-slip'
+      preLoaderRoute: typeof BetSlipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,8 +121,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BetSlipRoute: BetSlipRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  SportsbookRoute: SportsbookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
