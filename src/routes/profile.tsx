@@ -7,6 +7,8 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/hooks/use-bet-slip";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — PlayBook" }, { name: "description", content: "Your bankroll, stats, and bet history." }] }),
@@ -26,20 +28,33 @@ function Profile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [busy, setBusy] = useState(true);
+  const [settling, setSettling] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) { navigate({ to: "/login" }); return; }
-    (async () => {
-      const [{ data: p }, { data: b }] = await Promise.all([
-        supabase.from("profiles").select("username, balance, created_at").eq("user_id", user.id).maybeSingle(),
-        supabase.from("bets").select("id, selection_label, price, stake, potential_payout, status, placed_at, games(home_team, away_team, league)").order("placed_at", { ascending: false }),
-      ]);
-      setProfile(p as any);
-      setBets((b ?? []) as any);
-      setBusy(false);
-    })();
+    void refresh();
   }, [user, loading, navigate]);
+
+  const refresh = async () => {
+    if (!user) return;
+    const [{ data: p }, { data: b }] = await Promise.all([
+      supabase.from("profiles").select("username, balance, created_at").eq("user_id", user.id).maybeSingle(),
+      supabase.from("bets").select("id, selection_label, price, stake, potential_payout, status, placed_at, games(home_team, away_team, league)").order("placed_at", { ascending: false }),
+    ]);
+    setProfile(p as any);
+    setBets((b ?? []) as any);
+    setBusy(false);
+  };
+
+  const settle = async (id: string, outcome: "won" | "lost" | "void") => {
+    setSettling(id);
+    const { error } = await supabase.rpc("settle_bet", { p_bet_id: id, p_outcome: outcome });
+    setSettling(null);
+    if (error) return toast.error(error.message);
+    toast.success(`Bet marked ${outcome}`);
+    await refresh();
+  };
 
   if (loading || busy) {
     return <div className="mx-auto max-w-4xl px-4 py-8 space-y-4">
@@ -117,6 +132,14 @@ function Profile() {
                     <div className="font-bold tabular-nums">{Number(b.stake).toLocaleString()} → {Number(b.potential_payout).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                   </div>
                   <div className="text-right">{statusBadge(b.status)}</div>
+                  {b.status === "pending" && (
+                    <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-4 sm:justify-end">
+                      <span className="mr-auto text-[11px] uppercase tracking-widest text-muted-foreground sm:mr-2 sm:self-center">Test settle</span>
+                      <Button size="sm" variant="secondary" disabled={settling === b.id} onClick={() => settle(b.id, "won")}>Win</Button>
+                      <Button size="sm" variant="secondary" disabled={settling === b.id} onClick={() => settle(b.id, "lost")}>Loss</Button>
+                      <Button size="sm" variant="ghost" disabled={settling === b.id} onClick={() => settle(b.id, "void")}>Void</Button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
