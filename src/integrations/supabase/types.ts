@@ -202,6 +202,10 @@ export type Database = {
         Args: { p_odds_id: string; p_stake: number }
         Returns: string
       }
+      settle_bet: {
+        Args: { p_bet_id: string; p_outcome: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
