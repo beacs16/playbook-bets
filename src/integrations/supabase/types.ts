@@ -81,6 +81,7 @@ export type Database = {
           sport: string
           start_time: string
           status: string
+          winner: string | null
         }
         Insert: {
           away_team: string
@@ -91,6 +92,7 @@ export type Database = {
           sport: string
           start_time: string
           status?: string
+          winner?: string | null
         }
         Update: {
           away_team?: string
@@ -101,6 +103,7 @@ export type Database = {
           sport?: string
           start_time?: string
           status?: string
+          winner?: string | null
         }
         Relationships: []
       }
@@ -198,6 +201,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finalize_game: { Args: { p_game_id: string }; Returns: Json }
       place_bet: {
         Args: { p_odds_id: string; p_stake: number }
         Returns: string
