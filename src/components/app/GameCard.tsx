@@ -47,19 +47,19 @@ export function GameCard({ game }: { game: GameWithOdds }) {
   };
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <header className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
+    <article className="group overflow-hidden rounded-2xl border border-border/70 bg-gradient-card shadow-card hover-lift hover:border-primary/40 animate-fade-in">
+      <header className="flex items-center justify-between border-b border-border/50 px-4 py-3">
         <div className="flex items-center gap-2 text-xs">
-          <Badge variant="secondary" className="rounded-full">{game.league}</Badge>
-          <span className="text-muted-foreground">{game.sport}</span>
+          <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold tracking-wide">{game.league}</Badge>
+          <span className="text-muted-foreground uppercase text-[10px] tracking-widest">{game.sport}</span>
         </div>
-        <time className="text-xs font-medium text-muted-foreground">
+        <time className="text-xs font-medium text-muted-foreground tabular-nums">
           {format(new Date(game.start_time), "EEE, MMM d • h:mm a")}
         </time>
       </header>
-      <div className="px-4">
+      <div className="px-4 py-1">
         <Row team={game.away_team} side="away" />
-        <div className="h-px bg-border/50" />
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <Row team={game.home_team} side="home" />
       </div>
     </article>
