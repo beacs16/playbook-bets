@@ -77,27 +77,28 @@ function Profile() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="rounded-2xl border border-border bg-card/80 p-6">
+    <div className="mx-auto max-w-4xl px-4 py-8 animate-fade-in">
+      <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-card p-6 shadow-card sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="grid h-14 w-14 place-items-center rounded-full bg-primary/15 text-primary">
+            <div className="grid h-16 w-16 place-items-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow">
               <UserIcon className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">@{profile?.username ?? "player"}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">@{profile?.username ?? "player"}</h1>
               <p className="text-sm text-muted-foreground">Joined {profile && format(new Date(profile.created_at), "MMM d, yyyy")}</p>
             </div>
           </div>
-          <div className="rounded-xl border border-primary/30 bg-primary/10 px-5 py-3 text-right">
-            <div className="text-[11px] uppercase tracking-widest text-primary/80">Bankroll</div>
-            <div className="flex items-center gap-2 text-2xl font-bold text-primary">
-              <Coins className="h-5 w-5" />
+          <div className="rounded-2xl border border-primary/40 bg-primary/10 px-6 py-4 text-right backdrop-blur">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-primary/80">Bankroll</div>
+            <div className="flex items-center gap-2 text-3xl font-bold text-primary tabular-nums">
+              <Coins className="h-6 w-6" />
               {Number(profile?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="relative mt-6 grid grid-cols-3 gap-3">
           <Stat icon={History} label="Bets placed" value={bets.length.toString()} />
           <Stat icon={TrendingUp} label="Pending" value={pending.toString()} />
           <Stat icon={Coins} label="Total staked" value={totalStaked.toLocaleString()} />
@@ -105,31 +106,36 @@ function Profile() {
       </div>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-bold">Bet history</h2>
+        <h2 className="mb-4 text-lg font-bold tracking-tight">Bet history</h2>
         {bets.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-10 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
+            <History className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-muted-foreground">No bets yet.</p>
             <Link to="/sportsbook" className="mt-3 inline-block text-sm font-semibold text-primary hover:underline">Browse the sportsbook →</Link>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border">
-            <ul className="divide-y divide-border bg-card">
-              {bets.map((b) => (
-                <li key={b.id} className="grid grid-cols-[1fr_auto] items-center gap-3 p-4 sm:grid-cols-[2fr_1fr_1fr_auto]">
+          <div className="overflow-hidden rounded-2xl border border-border/70 bg-gradient-card shadow-card">
+            <ul className="divide-y divide-border/60">
+              {bets.map((b, i) => (
+                <li
+                  key={b.id}
+                  style={{ animationDelay: `${i * 30}ms` }}
+                  className="grid grid-cols-[1fr_auto] items-center gap-3 p-4 transition-colors hover:bg-secondary/30 animate-fade-in sm:grid-cols-[2fr_1fr_1fr_auto]"
+                >
                   <div className="min-w-0">
                     <div className="truncate font-semibold">{b.selection_label}</div>
                     <div className="text-xs text-muted-foreground">
                       {b.games ? `${b.games.away_team} @ ${b.games.home_team} • ${b.games.league}` : "—"}
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{format(new Date(b.placed_at), "MMM d, h:mm a")}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">{format(new Date(b.placed_at), "MMM d, h:mm a")}</div>
                   </div>
                   <div className="hidden text-sm sm:block">
-                    <div className="text-xs text-muted-foreground">Odds</div>
-                    <div className="font-bold text-primary">{formatPrice(b.price)}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Odds</div>
+                    <div className="font-bold text-primary tabular-nums">{formatPrice(b.price)}</div>
                   </div>
                   <div className="hidden text-right text-sm sm:block">
-                    <div className="text-xs text-muted-foreground">Stake → Payout</div>
-                    <div className="font-bold tabular-nums">{Number(b.stake).toLocaleString()} → {Number(b.potential_payout).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Stake → Payout</div>
+                    <div className="font-bold tabular-nums">{Number(b.stake).toLocaleString()} <span className="text-muted-foreground">→</span> <span className="text-primary">{Number(b.potential_payout).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
                   </div>
                   <div className="text-right">{statusBadge(b.status)}</div>
                   {b.status === "pending" && (
@@ -152,11 +158,11 @@ function Profile() {
 
 function Stat({ icon: Icon, label, value }: any) {
   return (
-    <div className="rounded-lg border border-border bg-secondary/40 p-3">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3 transition-all hover:border-primary/40 hover:bg-secondary/50">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
         <Icon className="h-3 w-3" /> {label}
       </div>
-      <div className="mt-1 text-lg font-bold tabular-nums">{value}</div>
+      <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
     </div>
   );
 }

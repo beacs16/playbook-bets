@@ -43,58 +43,63 @@ function BetSlipPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-2xl px-4 py-8 animate-fade-in">
       <header className="mb-6 flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/15 text-primary">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30 shadow-glow">
           <Receipt className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Bet Slip</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Bet Slip</h1>
           <p className="text-sm text-muted-foreground">{picks.length} selection{picks.length === 1 ? "" : "s"}</p>
         </div>
       </header>
 
       {picks.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
+          <Receipt className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
           <p className="text-muted-foreground">Your slip is empty.</p>
           <Link to="/sportsbook" className="mt-4 inline-block">
-            <Button>Find games</Button>
+            <Button className="bg-gradient-primary text-primary-foreground shadow-glow">Find games</Button>
           </Link>
         </div>
       ) : (
         <>
           <div className="space-y-3">
-            {picks.map((p) => {
+            {picks.map((p, i) => {
               const stake = stakeFor(p.oddsId);
               const payout = calcPayout(stake, p.price);
               return (
-                <div key={p.oddsId} className="rounded-xl border border-border bg-card p-4">
+                <div
+                  key={p.oddsId}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="rounded-2xl border border-border/70 bg-gradient-card p-4 shadow-card animate-slide-up hover:border-primary/40 transition-colors"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-xs text-muted-foreground">{p.matchup}</div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{p.matchup}</div>
                       <div className="font-semibold">{p.label}</div>
-                      <div className="mt-0.5 text-sm font-bold text-primary">{formatPrice(p.price)}</div>
+                      <div className="mt-0.5 text-sm font-bold text-primary tabular-nums">{formatPrice(p.price)}</div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => remove(p.oddsId)} aria-label="Remove">
+                    <Button variant="ghost" size="icon" onClick={() => remove(p.oddsId)} aria-label="Remove" className="hover:bg-destructive/15 hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="mt-3 grid grid-cols-2 items-end gap-3">
                     <div>
-                      <label className="text-xs text-muted-foreground">Stake (coins)</label>
+                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Stake (coins)</label>
                       <Input
                         type="number" min={1} inputMode="numeric"
                         value={stakes[p.oddsId] ?? "10"}
                         onChange={(e) => setStakes((s) => ({ ...s, [p.oddsId]: e.target.value }))}
-                        className="mt-1"
+                        className="mt-1 tabular-nums font-semibold focus-visible:ring-primary"
                       />
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-muted-foreground">To win</div>
-                      <div className="text-lg font-bold text-primary">
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">To win</div>
+                      <div className="text-xl font-bold text-primary tabular-nums">
                         {(payout - stake).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </div>
-                      <div className="text-[11px] text-muted-foreground">Payout {payout.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                      <div className="text-[11px] text-muted-foreground tabular-nums">Payout {payout.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
                     </div>
                   </div>
                 </div>
@@ -102,17 +107,17 @@ function BetSlipPage() {
             })}
           </div>
 
-          <div className="sticky bottom-3 mt-6 rounded-xl border border-primary/30 bg-card/95 p-4 backdrop-blur">
+          <div className="sticky bottom-3 mt-6 rounded-2xl border border-primary/30 glass p-4 shadow-glow">
             <div className="mb-3 flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Total stake</span>
-              <span className="font-bold">
+              <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Total stake</span>
+              <span className="font-bold tabular-nums">
                 {picks.reduce((sum, p) => sum + stakeFor(p.oddsId), 0).toLocaleString()} coins
               </span>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={clear} className="flex-1">Clear</Button>
-              <Button onClick={placeAll} className="flex-[2]" disabled={submitting}>
-                {submitting ? "Placing…" : user ? "Place bets" : "Log in to bet"}
+              <Button onClick={placeAll} className="flex-[2] bg-gradient-primary font-bold text-primary-foreground shadow-glow disabled:opacity-60" disabled={submitting}>
+                {submitting ? "Placing…" : user ? `Place ${picks.length} bet${picks.length > 1 ? "s" : ""}` : "Log in to bet"}
               </Button>
             </div>
           </div>
