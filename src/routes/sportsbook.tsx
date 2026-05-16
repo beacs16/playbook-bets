@@ -5,6 +5,7 @@ import { GameCard, type GameWithOdds } from "@/components/app/GameCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
+import { TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/sportsbook")({
   head: () => ({ meta: [{ title: "Sportsbook — PlayBook" }, { name: "description", content: "Browse upcoming games and place virtual bets across NBA, NFL, EPL, MLB, NHL." }] }),
@@ -30,31 +31,52 @@ function Sportsbook() {
   const filtered = (data ?? []).filter((g) => sport === "All" || g.sport === sport);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 animate-fade-in">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sportsbook</h1>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+            <TrendingUp className="h-3 w-3" /> Live markets
+          </div>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Sportsbook</h1>
           <p className="text-sm text-muted-foreground">Tap any odds to add it to your bet slip.</p>
+        </div>
+        <div className="hidden text-right text-xs text-muted-foreground sm:block">
+          <div className="font-bold text-foreground">{filtered.length} games</div>
+          <div>{sport === "All" ? "All sports" : sport}</div>
         </div>
       </header>
 
       {sports.length > 1 && (
         <Tabs value={sport} onValueChange={setSport} className="mb-6">
-          <TabsList className="flex w-full flex-wrap justify-start gap-1 bg-secondary/50">
-            {sports.map((s) => <TabsTrigger key={s} value={s}>{s}</TabsTrigger>)}
+          <TabsList className="flex w-full flex-wrap justify-start gap-1 bg-secondary/40 p-1 backdrop-blur">
+            {sports.map((s) => (
+              <TabsTrigger
+                key={s}
+                value={s}
+                className="rounded-md px-4 font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow"
+              >
+                {s}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       )}
 
       {isLoading ? (
         <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-2xl animate-shimmer" />
+          ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-10 text-center text-muted-foreground">No games available.</div>
+        <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center text-muted-foreground">No games available.</div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((g) => <GameCard key={g.id} game={g} />)}
+        <div className="grid gap-3 md:grid-cols-2">
+          {filtered.map((g, i) => (
+            <div key={g.id} style={{ animationDelay: `${i * 40}ms` }} className="animate-slide-up">
+              <GameCard game={g} />
+            </div>
+          ))}
         </div>
       )}
     </div>
