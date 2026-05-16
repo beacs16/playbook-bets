@@ -40,33 +40,33 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/50 glass">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_24px_-4px_var(--color-primary)]">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow transition-transform hover:scale-105">
             <Trophy className="h-5 w-5" />
           </div>
           <div className="leading-none">
-            <div className="text-lg font-bold tracking-tight">PlayBook</div>
+            <div className="text-lg font-bold tracking-tight">Play<span className="text-primary">Book</span></div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Virtual Sportsbook</div>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">{navLinks}</nav>
+        <nav className="hidden items-center gap-7 md:flex">{navLinks}</nav>
 
         <div className="flex items-center gap-2">
           {user ? (
             <>
-              <div className="hidden items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary sm:flex">
+              <div className="hidden items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-sm font-bold text-primary sm:flex tabular-nums transition-all hover:bg-primary/15 hover:shadow-glow">
                 <Coins className="h-4 w-4" />
                 {balance !== null ? balance.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
               </div>
               <Link to="/bet-slip" className="relative">
-                <Button variant="secondary" size="icon" aria-label="Bet slip">
+                <Button variant="secondary" size="icon" aria-label="Bet slip" className="hover:border-primary/50">
                   <Receipt className="h-4 w-4" />
                 </Button>
                 {picks.length > 0 && (
-                  <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-accent text-[11px] font-bold text-accent-foreground">
+                  <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-accent text-[11px] font-bold text-accent-foreground animate-glow-pulse">
                     {picks.length}
                   </span>
                 )}
