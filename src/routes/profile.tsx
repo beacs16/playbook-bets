@@ -75,8 +75,8 @@ function Profile() {
     </div>;
   }
 
-  const totalStaked = bets.reduce((s, b) => s + Number(b.stake), 0);
-  const parlayStaked = parlays.reduce((s, p) => s + Number(p.stake), 0);
+  const totalStaked = bets.reduce((s, b) => s + Number(b.stake), 0)
+    + parlays.reduce((s, p) => s + Number(p.stake), 0);
   const pending = bets.filter((b) => b.status === "pending").length
     + parlays.filter((p) => p.status === "pending").length;
 
