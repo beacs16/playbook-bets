@@ -50,3 +50,12 @@ export const useBetSlip = () => useContext(BetSlipContext);
 export const formatPrice = (p: number) => (p > 0 ? `+${p}` : `${p}`);
 export const calcPayout = (stake: number, price: number) =>
   price > 0 ? stake + (stake * price) / 100 : stake + (stake * 100) / Math.abs(price);
+
+export const americanToDecimal = (price: number) =>
+  price > 0 ? 1 + price / 100 : 1 + 100 / Math.abs(price);
+
+export const formatDecimalAsAmerican = (decimal: number) => {
+  const profit = decimal - 1;
+  if (profit >= 1) return `+${Math.round(profit * 100)}`;
+  return `${Math.round(-100 / profit)}`;
+};
