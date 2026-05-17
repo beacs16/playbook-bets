@@ -20,7 +20,8 @@ function Sportsbook() {
     queryFn: async (): Promise<GameWithOdds[]> => {
       const { data: games, error } = await supabase
         .from("games")
-        .select("id, sport, league, home_team, away_team, start_time, odds(id, market, selection, label, price)")
+        .select("id, sport, league, home_team, away_team, start_time, home_logo_url, away_logo_url, odds(id, market, selection, label, price)")
+        .eq("status", "scheduled")
         .order("start_time", { ascending: true });
       if (error) throw error;
       return (games ?? []) as any;
