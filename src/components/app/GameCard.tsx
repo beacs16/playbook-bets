@@ -10,6 +10,8 @@ export type GameWithOdds = {
   home_team: string;
   away_team: string;
   start_time: string;
+  home_logo_url?: string | null;
+  away_logo_url?: string | null;
   odds: { id: string; market: string; selection: string; label: string; price: number }[];
 };
 
@@ -33,9 +35,17 @@ export function GameCard({ game }: { game: GameWithOdds }) {
     const ml = get("moneyline", side);
     const sp = get("spread", side);
     const tot = get("total", side === "home" ? "over" : "under");
+    const logo = side === "home" ? game.home_logo_url : game.away_logo_url;
     return (
       <div className="grid grid-cols-[1fr_repeat(3,_minmax(0,72px))] items-center gap-2 py-2 sm:gap-3">
-        <div className="truncate font-medium">{team}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          {logo ? (
+            <img src={logo} alt="" loading="lazy" className="h-7 w-7 shrink-0 object-contain" />
+          ) : (
+            <div className="h-7 w-7 shrink-0 rounded-full bg-secondary/60" />
+          )}
+          <span className="truncate font-medium">{team}</span>
+        </div>
         <OddsButton label="Spread" price={sp?.price ?? 0} selected={sp ? has(sp.id) : false}
           onClick={() => toggle(sp)} />
         <OddsButton label="Total" price={tot?.price ?? 0} selected={tot ? has(tot.id) : false}
