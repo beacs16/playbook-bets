@@ -151,6 +151,100 @@ export type Database = {
           },
         ]
       }
+      parlay_legs: {
+        Row: {
+          game_id: string
+          id: string
+          market: string
+          odds_id: string
+          parlay_id: string
+          price: number
+          selection: string
+          selection_label: string
+          settled_at: string | null
+          status: string
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          market: string
+          odds_id: string
+          parlay_id: string
+          price: number
+          selection: string
+          selection_label: string
+          settled_at?: string | null
+          status?: string
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          market?: string
+          odds_id?: string
+          parlay_id?: string
+          price?: number
+          selection?: string
+          selection_label?: string
+          settled_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlay_legs_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parlay_legs_odds_id_fkey"
+            columns: ["odds_id"]
+            isOneToOne: false
+            referencedRelation: "odds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parlay_legs_parlay_id_fkey"
+            columns: ["parlay_id"]
+            isOneToOne: false
+            referencedRelation: "parlays"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parlays: {
+        Row: {
+          combined_decimal_odds: number
+          id: string
+          placed_at: string
+          potential_payout: number
+          settled_at: string | null
+          stake: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          combined_decimal_odds: number
+          id?: string
+          placed_at?: string
+          potential_payout: number
+          settled_at?: string | null
+          stake: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          combined_decimal_odds?: number
+          id?: string
+          placed_at?: string
+          potential_payout?: number
+          settled_at?: string | null
+          stake?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           balance: number
@@ -207,9 +301,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      american_to_decimal: { Args: { p_price: number }; Returns: number }
       finalize_game: { Args: { p_game_id: string }; Returns: Json }
       place_bet: {
         Args: { p_odds_id: string; p_stake: number }
+        Returns: string
+      }
+      place_parlay: {
+        Args: { p_odds_ids: string[]; p_stake: number }
         Returns: string
       }
       settle_bet: {

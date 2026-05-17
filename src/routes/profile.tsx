@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Coins, History, TrendingUp, User as UserIcon } from "lucide-react";
+import { Coins, History, TrendingUp, User as UserIcon, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,12 +21,22 @@ type Bet = {
   potential_payout: number; status: string; placed_at: string;
   games: { home_team: string; away_team: string; league: string } | null;
 };
+type ParlayLeg = {
+  id: string; selection_label: string; price: number; status: string;
+  games: { home_team: string; away_team: string; league: string } | null;
+};
+type Parlay = {
+  id: string; stake: number; combined_decimal_odds: number;
+  potential_payout: number; status: string; placed_at: string;
+  parlay_legs: ParlayLeg[];
+};
 
 function Profile() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
+  const [parlays, setParlays] = useState<Parlay[]>([]);
   const [busy, setBusy] = useState(true);
   const [settling, setSettling] = useState<string | null>(null);
 
@@ -38,12 +48,14 @@ function Profile() {
 
   const refresh = async () => {
     if (!user) return;
-    const [{ data: p }, { data: b }] = await Promise.all([
+    const [{ data: p }, { data: b }, { data: pl }] = await Promise.all([
       supabase.from("profiles").select("username, balance, created_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("bets").select("id, selection_label, price, stake, potential_payout, status, placed_at, games(home_team, away_team, league)").order("placed_at", { ascending: false }),
+      supabase.from("parlays").select("id, stake, combined_decimal_odds, potential_payout, status, placed_at, parlay_legs(id, selection_label, price, status, games(home_team, away_team, league))").order("placed_at", { ascending: false }),
     ]);
     setProfile(p as any);
     setBets((b ?? []) as any);
+    setParlays((pl ?? []) as any);
     setBusy(false);
   };
 
@@ -63,8 +75,10 @@ function Profile() {
     </div>;
   }
 
-  const totalStaked = bets.reduce((s, b) => s + Number(b.stake), 0);
-  const pending = bets.filter((b) => b.status === "pending").length;
+  const totalStaked = bets.reduce((s, b) => s + Number(b.stake), 0)
+    + parlays.reduce((s, p) => s + Number(p.stake), 0);
+  const pending = bets.filter((b) => b.status === "pending").length
+    + parlays.filter((p) => p.status === "pending").length;
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
@@ -107,13 +121,63 @@ function Profile() {
 
       <section className="mt-8">
         <h2 className="mb-4 text-lg font-bold tracking-tight">Bet history</h2>
-        {bets.length === 0 ? (
+        {bets.length === 0 && parlays.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
             <History className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-muted-foreground">No bets yet.</p>
             <Link to="/sportsbook" className="mt-3 inline-block text-sm font-semibold text-primary hover:underline">Browse the sportsbook →</Link>
           </div>
         ) : (
+          <>
+          {parlays.length > 0 && (
+            <div className="mb-4 overflow-hidden rounded-2xl border border-primary/30 bg-gradient-card shadow-card">
+              <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2 text-xs uppercase tracking-widest text-muted-foreground">
+                <Layers className="h-3.5 w-3.5 text-primary" /> Parlays
+              </div>
+              <ul className="divide-y divide-border/60">
+                {parlays.map((p) => (
+                  <li key={p.id} className="p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-semibold">{p.parlay_legs.length}-leg parlay</div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {format(new Date(p.placed_at), "MMM d, h:mm a")} · {Number(p.combined_decimal_odds).toFixed(2)}x
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right text-sm">
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Stake → Payout</div>
+                          <div className="font-bold tabular-nums">
+                            {Number(p.stake).toLocaleString()}
+                            <span className="text-muted-foreground"> → </span>
+                            <span className="text-primary">{Number(p.potential_payout).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                          </div>
+                        </div>
+                        {statusBadge(p.status)}
+                      </div>
+                    </div>
+                    <ul className="mt-3 space-y-1.5 rounded-lg bg-secondary/30 p-3">
+                      {p.parlay_legs.map((leg) => (
+                        <li key={leg.id} className="flex items-center justify-between gap-2 text-sm">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">{leg.selection_label}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {leg.games ? `${leg.games.away_team} @ ${leg.games.home_team}` : "—"}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-primary tabular-nums">{formatPrice(leg.price)}</span>
+                            {statusBadge(leg.status)}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {bets.length > 0 && (
           <div className="overflow-hidden rounded-2xl border border-border/70 bg-gradient-card shadow-card">
             <ul className="divide-y divide-border/60">
               {bets.map((b, i) => (
@@ -150,6 +214,8 @@ function Profile() {
               ))}
             </ul>
           </div>
+          )}
+          </>
         )}
       </section>
     </div>
