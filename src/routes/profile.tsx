@@ -130,6 +130,14 @@ function Profile() {
       </div>
 
       <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight">Player stats</h2>
+          <Link to="/leaderboard" className="text-xs font-semibold text-primary hover:underline">View leaderboard →</Link>
+        </div>
+        <StatsPanel stats={stats} />
+      </section>
+
+      <section className="mt-8">
         <h2 className="mb-4 text-lg font-bold tracking-tight">Bet history</h2>
         {bets.length === 0 && parlays.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
