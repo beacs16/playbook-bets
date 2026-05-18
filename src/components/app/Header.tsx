@@ -35,6 +35,7 @@ export function Header() {
     <>
       <Link to="/sportsbook" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Sportsbook</Link>
       <Link to="/bet-slip" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Bet Slip</Link>
+      <Link to="/leaderboard" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Leaderboard</Link>
       <Link to="/profile" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Profile</Link>
     </>
   );
