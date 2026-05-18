@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Receipt, Layers } from "lucide-react";
+import { Trash2, Receipt, Layers, Sparkles, Trophy, Lock } from "lucide-react";
 import {
   calcPayout, formatPrice, useBetSlip,
   americanToDecimal, formatDecimalAsAmerican,
@@ -29,6 +29,7 @@ function BetSlipPage() {
 
   const uniqueGameIds = useMemo(() => new Set(picks.map((p) => p.gameId)), [picks]);
   const parlayEligible = picks.length >= 2 && uniqueGameIds.size === picks.length;
+  const sameGameConflict = picks.length >= 2 && uniqueGameIds.size !== picks.length;
 
   const combinedDecimal = useMemo(
     () => picks.reduce((acc, p) => acc * americanToDecimal(p.price), 1),
@@ -98,21 +99,33 @@ function BetSlipPage() {
       ) : (
         <>
           {picks.length >= 2 && (
-            <div className="mb-4 inline-flex rounded-xl border border-border/70 bg-secondary/40 p-1">
-              <button
-                onClick={() => setMode("single")}
-                className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${mode === "single" ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Singles
-              </button>
-              <button
-                onClick={() => setMode("parlay")}
-                disabled={!parlayEligible}
-                title={!parlayEligible ? "Parlay requires legs from different games" : undefined}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${mode === "parlay" ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <Layers className="h-3.5 w-3.5" /> Parlay
-              </button>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <div className="inline-flex rounded-xl border border-border/70 bg-secondary/40 p-1">
+                <button
+                  onClick={() => setMode("single")}
+                  className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${mode === "single" ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Singles
+                </button>
+                <button
+                  onClick={() => setMode("parlay")}
+                  disabled={!parlayEligible}
+                  title={!parlayEligible ? "Parlay requires legs from different games" : undefined}
+                  className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${mode === "parlay" ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Layers className="h-3.5 w-3.5" /> Parlay
+                </button>
+              </div>
+              {sameGameConflict && (
+                <div className="flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-destructive">
+                  <Lock className="h-3 w-3" /> Same-game legs not allowed
+                </div>
+              )}
+              {mode === "parlay" && parlayEligible && (
+                <div className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary animate-glow-pulse">
+                  <Sparkles className="h-3 w-3" /> {combinedDecimal.toFixed(2)}x boost
+                </div>
+              )}
             </div>
           )}
 
@@ -162,35 +175,61 @@ function BetSlipPage() {
           </div>
 
           {mode === "parlay" && (
-            <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-card p-4 shadow-card">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-bold">{picks.length}-leg parlay</span>
-                </div>
-                <span className="text-sm font-bold text-primary tabular-nums">
-                  {formatDecimalAsAmerican(combinedDecimal)} ({combinedDecimal.toFixed(2)}x)
-                </span>
-              </div>
-              <div className="grid grid-cols-2 items-end gap-3">
-                <div>
-                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Parlay stake</label>
-                  <Input
-                    type="number" min={1} inputMode="numeric"
-                    value={parlayStake}
-                    onChange={(e) => setParlayStake(e.target.value)}
-                    className="mt-1 tabular-nums font-semibold focus-visible:ring-primary"
-                  />
-                </div>
-                <div className="text-right">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">To win</div>
-                  <div className="text-xl font-bold text-primary tabular-nums">
-                    {parlayProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            <div className="relative mt-5 overflow-hidden rounded-2xl border border-primary/40 bg-gradient-card p-5 shadow-glow animate-slide-up">
+              <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: "var(--gradient-hero)" }} />
+              <div className="relative">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
+                      <Trophy className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold leading-tight">{picks.length}-Leg Parlay</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">All legs must win</div>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-muted-foreground tabular-nums">Payout {parlayPayout.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Combined odds</div>
+                    <div className="text-lg font-extrabold text-primary tabular-nums leading-tight">
+                      {formatDecimalAsAmerican(combinedDecimal)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground tabular-nums">{combinedDecimal.toFixed(2)}x</div>
+                  </div>
                 </div>
+
+                <div className="mb-4 flex flex-wrap gap-1.5">
+                  {picks.map((p) => (
+                    <span key={p.oddsId} className="rounded-full border border-border/70 bg-secondary/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {p.label} <span className="text-primary">{formatPrice(p.price)}</span>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 items-end gap-3 rounded-xl border border-border/60 bg-background/40 p-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Wager (coins)</label>
+                    <Input
+                      type="number" min={1} inputMode="numeric"
+                      value={parlayStake}
+                      onChange={(e) => setParlayStake(e.target.value)}
+                      className="mt-1 h-10 text-base tabular-nums font-bold focus-visible:ring-primary"
+                    />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Projected payout</div>
+                    <div className="text-2xl font-extrabold text-primary tabular-nums leading-tight">
+                      {parlayPayout.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground tabular-nums">
+                      +{parlayProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })} profit
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+                  Virtual currency only — no real-money gambling. Spread / total legs void on simulation and reduce combined odds.
+                </p>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">All legs must win for the parlay to pay. Spread/total legs are voided when games are simulated.</p>
             </div>
           )}
 
