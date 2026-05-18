@@ -303,6 +303,8 @@ export type Database = {
     Functions: {
       american_to_decimal: { Args: { p_price: number }; Returns: number }
       finalize_game: { Args: { p_game_id: string }; Returns: Json }
+      get_leaderboards: { Args: never; Returns: Json }
+      get_user_stats: { Args: { p_user_id: string }; Returns: Json }
       place_bet: {
         Args: { p_odds_id: string; p_stake: number }
         Returns: string

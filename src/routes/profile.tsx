@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Coins, History, TrendingUp, User as UserIcon, Layers } from "lucide-react";
+import { Coins, History, TrendingUp, User as UserIcon, Layers, Trophy, Flame, Target, Percent, Activity, Award } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,12 +31,20 @@ type Parlay = {
   parlay_legs: ParlayLeg[];
 };
 
+type Stats = {
+  total_bets: number; wins: number; losses: number; voids: number; pending: number;
+  total_staked: number; total_returned: number; profit: number; roi: number;
+  avg_stake: number; favorite_sport: string | null;
+  current_streak: number; best_streak: number;
+};
+
 function Profile() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [parlays, setParlays] = useState<Parlay[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [busy, setBusy] = useState(true);
   const [settling, setSettling] = useState<string | null>(null);
 
@@ -48,14 +56,16 @@ function Profile() {
 
   const refresh = async () => {
     if (!user) return;
-    const [{ data: p }, { data: b }, { data: pl }] = await Promise.all([
+    const [{ data: p }, { data: b }, { data: pl }, { data: s }] = await Promise.all([
       supabase.from("profiles").select("username, balance, created_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("bets").select("id, selection_label, price, stake, potential_payout, status, placed_at, games(home_team, away_team, league)").order("placed_at", { ascending: false }),
       supabase.from("parlays").select("id, stake, combined_decimal_odds, potential_payout, status, placed_at, parlay_legs(id, selection_label, price, status, games(home_team, away_team, league))").order("placed_at", { ascending: false }),
+      supabase.rpc("get_user_stats", { p_user_id: user.id }),
     ]);
     setProfile(p as any);
     setBets((b ?? []) as any);
     setParlays((pl ?? []) as any);
+    setStats((s ?? null) as any);
     setBusy(false);
   };
 
@@ -118,6 +128,14 @@ function Profile() {
           <Stat icon={Coins} label="Total staked" value={totalStaked.toLocaleString()} />
         </div>
       </div>
+
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight">Player stats</h2>
+          <Link to="/leaderboard" className="text-xs font-semibold text-primary hover:underline">View leaderboard →</Link>
+        </div>
+        <StatsPanel stats={stats} />
+      </section>
 
       <section className="mt-8">
         <h2 className="mb-4 text-lg font-bold tracking-tight">Bet history</h2>
@@ -229,6 +247,51 @@ function Stat({ icon: Icon, label, value }: any) {
         <Icon className="h-3 w-3" /> {label}
       </div>
       <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function StatsPanel({ stats }: { stats: Stats | null }) {
+  if (!stats) {
+    return <Skeleton className="h-40 w-full rounded-2xl" />;
+  }
+  const settled = stats.wins + stats.losses;
+  const winRate = settled > 0 ? ((stats.wins / settled) * 100).toFixed(1) : "—";
+  const profit = Number(stats.profit);
+  const profitColor = profit > 0 ? "text-success" : profit < 0 ? "text-destructive" : "text-foreground";
+  const streak = stats.current_streak;
+  const streakLabel = streak > 0 ? `${streak}W` : streak < 0 ? `${Math.abs(streak)}L` : "—";
+  const streakColor = streak > 0 ? "text-success" : streak < 0 ? "text-destructive" : "text-foreground";
+
+  const cards: { icon: any; label: string; value: string; sub?: string; tone?: string }[] = [
+    { icon: Activity, label: "Total bets", value: stats.total_bets.toLocaleString(), sub: `${stats.pending} pending` },
+    { icon: Trophy, label: "Wins / Losses", value: `${stats.wins} – ${stats.losses}`, sub: `${winRate}${typeof winRate === "string" && winRate !== "—" ? "%" : ""} win rate` },
+    { icon: Percent, label: "ROI", value: `${stats.roi >= 0 ? "+" : ""}${Number(stats.roi).toFixed(1)}%`, tone: stats.roi >= 0 ? "text-success" : "text-destructive" },
+    { icon: TrendingUp, label: "Profit / Loss", value: `${profit >= 0 ? "+" : ""}${Math.round(profit).toLocaleString()}`, tone: profitColor, sub: `Staked ${Math.round(Number(stats.total_staked)).toLocaleString()}` },
+    { icon: Target, label: "Avg bet size", value: Math.round(Number(stats.avg_stake)).toLocaleString() },
+    { icon: Award, label: "Favorite sport", value: stats.favorite_sport ?? "—" },
+    { icon: Flame, label: "Current streak", value: streakLabel, tone: streakColor },
+    { icon: Trophy, label: "Best win streak", value: stats.best_streak > 0 ? `${stats.best_streak}W` : "—" },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {cards.map((c, i) => {
+        const Icon = c.icon;
+        return (
+          <div
+            key={i}
+            style={{ animationDelay: `${i * 30}ms` }}
+            className="rounded-2xl border border-border/70 bg-gradient-card p-4 shadow-card transition-all hover:border-primary/40 hover:shadow-glow animate-fade-in"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              <Icon className="h-3 w-3" /> {c.label}
+            </div>
+            <div className={`mt-1.5 text-xl font-extrabold tabular-nums ${c.tone ?? ""}`}>{c.value}</div>
+            {c.sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{c.sub}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
