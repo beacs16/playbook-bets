@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Coins, History, TrendingUp, User as UserIcon, Layers } from "lucide-react";
+import { Coins, History, TrendingUp, User as UserIcon, Layers, Trophy, Flame, Target, Percent, Activity, Award } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,12 +31,20 @@ type Parlay = {
   parlay_legs: ParlayLeg[];
 };
 
+type Stats = {
+  total_bets: number; wins: number; losses: number; voids: number; pending: number;
+  total_staked: number; total_returned: number; profit: number; roi: number;
+  avg_stake: number; favorite_sport: string | null;
+  current_streak: number; best_streak: number;
+};
+
 function Profile() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [parlays, setParlays] = useState<Parlay[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [busy, setBusy] = useState(true);
   const [settling, setSettling] = useState<string | null>(null);
 
@@ -48,14 +56,16 @@ function Profile() {
 
   const refresh = async () => {
     if (!user) return;
-    const [{ data: p }, { data: b }, { data: pl }] = await Promise.all([
+    const [{ data: p }, { data: b }, { data: pl }, { data: s }] = await Promise.all([
       supabase.from("profiles").select("username, balance, created_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("bets").select("id, selection_label, price, stake, potential_payout, status, placed_at, games(home_team, away_team, league)").order("placed_at", { ascending: false }),
       supabase.from("parlays").select("id, stake, combined_decimal_odds, potential_payout, status, placed_at, parlay_legs(id, selection_label, price, status, games(home_team, away_team, league))").order("placed_at", { ascending: false }),
+      supabase.rpc("get_user_stats", { p_user_id: user.id }),
     ]);
     setProfile(p as any);
     setBets((b ?? []) as any);
     setParlays((pl ?? []) as any);
+    setStats((s ?? null) as any);
     setBusy(false);
   };
 
