@@ -250,3 +250,48 @@ function Stat({ icon: Icon, label, value }: any) {
     </div>
   );
 }
+
+function StatsPanel({ stats }: { stats: Stats | null }) {
+  if (!stats) {
+    return <Skeleton className="h-40 w-full rounded-2xl" />;
+  }
+  const settled = stats.wins + stats.losses;
+  const winRate = settled > 0 ? ((stats.wins / settled) * 100).toFixed(1) : "—";
+  const profit = Number(stats.profit);
+  const profitColor = profit > 0 ? "text-success" : profit < 0 ? "text-destructive" : "text-foreground";
+  const streak = stats.current_streak;
+  const streakLabel = streak > 0 ? `${streak}W` : streak < 0 ? `${Math.abs(streak)}L` : "—";
+  const streakColor = streak > 0 ? "text-success" : streak < 0 ? "text-destructive" : "text-foreground";
+
+  const cards: { icon: any; label: string; value: string; sub?: string; tone?: string }[] = [
+    { icon: Activity, label: "Total bets", value: stats.total_bets.toLocaleString(), sub: `${stats.pending} pending` },
+    { icon: Trophy, label: "Wins / Losses", value: `${stats.wins} – ${stats.losses}`, sub: `${winRate}${typeof winRate === "string" && winRate !== "—" ? "%" : ""} win rate` },
+    { icon: Percent, label: "ROI", value: `${stats.roi >= 0 ? "+" : ""}${Number(stats.roi).toFixed(1)}%`, tone: stats.roi >= 0 ? "text-success" : "text-destructive" },
+    { icon: TrendingUp, label: "Profit / Loss", value: `${profit >= 0 ? "+" : ""}${Math.round(profit).toLocaleString()}`, tone: profitColor, sub: `Staked ${Math.round(Number(stats.total_staked)).toLocaleString()}` },
+    { icon: Target, label: "Avg bet size", value: Math.round(Number(stats.avg_stake)).toLocaleString() },
+    { icon: Award, label: "Favorite sport", value: stats.favorite_sport ?? "—" },
+    { icon: Flame, label: "Current streak", value: streakLabel, tone: streakColor },
+    { icon: Trophy, label: "Best win streak", value: stats.best_streak > 0 ? `${stats.best_streak}W` : "—" },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {cards.map((c, i) => {
+        const Icon = c.icon;
+        return (
+          <div
+            key={i}
+            style={{ animationDelay: `${i * 30}ms` }}
+            className="rounded-2xl border border-border/70 bg-gradient-card p-4 shadow-card transition-all hover:border-primary/40 hover:shadow-glow animate-fade-in"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              <Icon className="h-3 w-3" /> {c.label}
+            </div>
+            <div className={`mt-1.5 text-xl font-extrabold tabular-nums ${c.tone ?? ""}`}>{c.value}</div>
+            {c.sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{c.sub}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
