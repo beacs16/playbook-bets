@@ -172,3 +172,115 @@ export const syncLiveOdds = createServerFn({ method: "POST" }).handler(async () 
     return { cached: false, error: e?.message ?? "sync failed" };
   }
 });
+
+// ===== Scores sync =====
+const SCORES_TTL_MS = 30 * 1000;
+let lastScoresAt = 0;
+let scoresInflight: Promise<{ updated: number; settled: number; lastUpdated: string }> | null = null;
+
+type ApiScoreEvent = {
+  id: string;
+  sport_key: string;
+  commence_time: string;
+  completed: boolean;
+  home_team: string;
+  away_team: string;
+  scores: Array<{ name: string; score: string }> | null;
+  last_update: string | null;
+};
+
+async function fetchScores(key: string, apiKey: string): Promise<ApiScoreEvent[]> {
+  const url = `https://api.the-odds-api.com/v4/sports/${key}/scores/?apiKey=${apiKey}&daysFrom=3`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Scores API ${key} [${res.status}]: ${body.slice(0, 200)}`);
+  }
+  return (await res.json()) as ApiScoreEvent[];
+}
+
+async function scoresOnce() {
+  const apiKey = process.env.ODDS_API_KEY;
+  if (!apiKey) throw new Error("ODDS_API_KEY is not configured");
+
+  let updated = 0;
+  let settled = 0;
+
+  for (const s of SPORTS) {
+    let events: ApiScoreEvent[] = [];
+    try {
+      events = await fetchScores(s.key, apiKey);
+    } catch (e) {
+      console.error("[scores] fetch failed", s.key, e);
+      continue;
+    }
+
+    for (const ev of events) {
+      const ext = `odds-api:${ev.id}`;
+      const home = ev.scores?.find((x) => x.name === ev.home_team);
+      const away = ev.scores?.find((x) => x.name === ev.away_team);
+      const homeScore = home ? Number(home.score) : null;
+      const awayScore = away ? Number(away.score) : null;
+
+      const { data: gameRow, error: gErr } = await supabaseAdmin
+        .from("games")
+        .update({
+          home_score: homeScore,
+          away_score: awayScore,
+          last_score_update: new Date().toISOString(),
+          status: ev.completed ? "final" : undefined,
+        })
+        .eq("external_id", ext)
+        .neq("status", "final")
+        .select("id, status, home_team, away_team")
+        .maybeSingle();
+
+      if (gErr) {
+        console.error("[scores] update failed", ev.id, gErr);
+        continue;
+      }
+      if (!gameRow) continue;
+      updated++;
+
+      if (ev.completed && homeScore != null && awayScore != null && homeScore !== awayScore) {
+        const winner = homeScore > awayScore ? ev.home_team : ev.away_team;
+        const { error: sErr } = await supabaseAdmin.rpc("settle_game_by_winner", {
+          p_game_id: gameRow.id,
+          p_winner: winner,
+        });
+        if (sErr) {
+          console.error("[scores] settle failed", ev.id, sErr);
+        } else {
+          settled++;
+        }
+      }
+    }
+  }
+
+  return { updated, settled, lastUpdated: new Date().toISOString() };
+}
+
+export const syncLiveScores = createServerFn({ method: "POST" }).handler(async () => {
+  const now = Date.now();
+  if (now - lastScoresAt < SCORES_TTL_MS) {
+    return { cached: true, ageMs: now - lastScoresAt, lastUpdated: new Date(lastScoresAt).toISOString() };
+  }
+  if (scoresInflight) {
+    const r = await scoresInflight;
+    return { cached: false, ...r };
+  }
+  scoresInflight = scoresOnce()
+    .then((r) => {
+      lastScoresAt = Date.now();
+      return r;
+    })
+    .finally(() => {
+      scoresInflight = null;
+    });
+  try {
+    const r = await scoresInflight;
+    return { cached: false, ...r };
+  } catch (e: any) {
+    return { cached: false, error: e?.message ?? "scores sync failed", lastUpdated: new Date().toISOString() };
+  }
+});

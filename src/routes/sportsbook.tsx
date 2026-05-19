@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { syncLiveOdds } from "@/lib/odds-api.functions";
+import { syncLiveOdds, syncLiveScores } from "@/lib/odds-api.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { GameCard, type GameWithOdds } from "@/components/app/GameCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
-import { TrendingUp, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { TrendingUp, AlertTriangle, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { formatDistanceToNow } from "date-fns";
 
 export const Route = createFileRoute("/sportsbook")({
   head: () => ({ meta: [{ title: "Sportsbook — PlayBook" }, { name: "description", content: "Browse upcoming games and place virtual bets across NBA, NFL, EPL, MLB, NHL." }] }),
@@ -20,23 +21,45 @@ function Sportsbook() {
   const [sport, setSport] = useState<string>("All");
   const [demoMode, setDemoMode] = useState(false);
   const sync = useServerFn(syncLiveOdds);
+  const syncScores = useServerFn(syncLiveScores);
+  const qc = useQueryClient();
 
   const syncQ = useQuery({
     queryKey: ["odds-sync"],
     queryFn: () => sync(),
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
   });
 
+  // Live scores: refresh every 30 seconds
+  const scoresQ = useQuery({
+    queryKey: ["odds-scores"],
+    queryFn: () => syncScores(),
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+
+  // When a settlement happens, refresh game rows so finals/scores show immediately
+  useEffect(() => {
+    const r: any = scoresQ.data;
+    if (r?.settled || r?.updated) {
+      qc.invalidateQueries({ queryKey: ["sportsbook"] });
+    }
+  }, [scoresQ.data, qc]);
+
   const { data, isLoading } = useQuery({
     queryKey: ["sportsbook", syncQ.dataUpdatedAt],
     enabled: !syncQ.isLoading,
+    refetchInterval: 60 * 1000,
     queryFn: async (): Promise<GameWithOdds[]> => {
       const { data: games, error } = await supabase
         .from("games")
-        .select("id, sport, league, home_team, away_team, start_time, home_logo_url, away_logo_url, external_id, odds(id, market, selection, label, price)")
-        .eq("status", "scheduled")
+        .select("id, sport, league, home_team, away_team, start_time, home_logo_url, away_logo_url, external_id, status, home_score, away_score, odds(id, market, selection, label, price)")
+        .in("status", ["scheduled", "in_progress", "final"])
         .order("start_time", { ascending: true });
       if (error) throw error;
       return (games ?? []) as any;
@@ -49,12 +72,19 @@ function Sportsbook() {
       !!g.external_id &&
       g.external_id.startsWith("odds-api:") &&
       !!g.start_time &&
-      !isNaN(new Date(g.start_time).getTime()) &&
-      new Date(g.start_time).getTime() > now;
+      !isNaN(new Date(g.start_time).getTime());
     return demoMode ? !isLive : isLive;
   });
+  // Hide finals older than 24h to keep list tidy
+  const visible2 = visible.filter(
+    (g) => g.status !== "final" || (g.start_time && now - new Date(g.start_time).getTime() < 24 * 60 * 60 * 1000),
+  );
   const sports = ["All", ...Array.from(new Set(visible.map((g) => g.sport)))];
-  const filtered = visible.filter((g) => sport === "All" || g.sport === sport);
+  const filtered = visible2.filter((g) => sport === "All" || g.sport === sport);
+
+  const lastUpdatedAt = scoresQ.dataUpdatedAt
+    ? new Date(scoresQ.dataUpdatedAt)
+    : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 animate-fade-in">
@@ -87,6 +117,24 @@ function Sportsbook() {
           </div>
         </div>
       </header>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="inline-flex items-center gap-1.5">
+          <RefreshCw className={`h-3 w-3 ${scoresQ.isFetching ? "animate-spin text-primary" : ""}`} />
+          <span>
+            Last updated{" "}
+            <span className="font-semibold text-foreground">
+              {lastUpdatedAt ? formatDistanceToNow(lastUpdatedAt, { addSuffix: true }) : "—"}
+            </span>
+            {" · "}scores 30s · odds 5m · finals 1m
+          </span>
+        </div>
+        {(scoresQ.data as any)?.settled ? (
+          <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-semibold text-success">
+            {(scoresQ.data as any).settled} ticket(s) auto-settled
+          </span>
+        ) : null}
+      </div>
 
       {syncQ.isError && (
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">

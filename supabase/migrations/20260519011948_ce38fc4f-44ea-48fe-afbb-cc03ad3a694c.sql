@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.settle_game_by_winner(uuid, text) FROM PUBLIC, anon, authenticated;

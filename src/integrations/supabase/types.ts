@@ -74,12 +74,15 @@ export type Database = {
       games: {
         Row: {
           away_logo_url: string | null
+          away_score: number | null
           away_team: string
           created_at: string
           external_id: string | null
           home_logo_url: string | null
+          home_score: number | null
           home_team: string
           id: string
+          last_score_update: string | null
           league: string
           sport: string
           start_time: string
@@ -88,12 +91,15 @@ export type Database = {
         }
         Insert: {
           away_logo_url?: string | null
+          away_score?: number | null
           away_team: string
           created_at?: string
           external_id?: string | null
           home_logo_url?: string | null
+          home_score?: number | null
           home_team: string
           id?: string
+          last_score_update?: string | null
           league: string
           sport: string
           start_time: string
@@ -102,12 +108,15 @@ export type Database = {
         }
         Update: {
           away_logo_url?: string | null
+          away_score?: number | null
           away_team?: string
           created_at?: string
           external_id?: string | null
           home_logo_url?: string | null
+          home_score?: number | null
           home_team?: string
           id?: string
+          last_score_update?: string | null
           league?: string
           sport?: string
           start_time?: string
@@ -322,6 +331,10 @@ export type Database = {
       settle_bet: {
         Args: { p_bet_id: string; p_outcome: string }
         Returns: undefined
+      }
+      settle_game_by_winner: {
+        Args: { p_game_id: string; p_winner: string }
+        Returns: Json
       }
     }
     Enums: {
