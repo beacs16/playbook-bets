@@ -1,0 +1,174 @@
+import { createServerFn } from "@tanstack/react-start";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const SPORTS = [
+  { key: "basketball_nba", sport: "Basketball", league: "NBA" },
+  { key: "americanfootball_nfl", sport: "Football", league: "NFL" },
+  { key: "baseball_mlb", sport: "Baseball", league: "MLB" },
+  { key: "icehockey_nhl", sport: "Hockey", league: "NHL" },
+] as const;
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+let lastSyncAt = 0;
+let inflight: Promise<{ synced: number; source: string }> | null = null;
+
+type ApiEvent = {
+  id: string;
+  sport_key: string;
+  sport_title: string;
+  commence_time: string;
+  home_team: string;
+  away_team: string;
+  bookmakers: Array<{
+    key: string;
+    markets: Array<{
+      key: "h2h" | "spreads" | "totals";
+      outcomes: Array<{ name: string; price: number; point?: number }>;
+    }>;
+  }>;
+};
+
+function toAmerican(price: number): number {
+  // The Odds API returns american when oddsFormat=american
+  return Math.round(price);
+}
+
+async function fetchSport(key: string, apiKey: string): Promise<ApiEvent[]> {
+  const url = `https://api.the-odds-api.com/v4/sports/${key}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&dateFormat=iso`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Odds API ${key} failed [${res.status}]: ${body.slice(0, 200)}`);
+  }
+  return (await res.json()) as ApiEvent[];
+}
+
+async function syncOnce(): Promise<{ synced: number; source: string }> {
+  const apiKey = process.env.ODDS_API_KEY;
+  if (!apiKey) throw new Error("ODDS_API_KEY is not configured");
+
+  let totalGames = 0;
+
+  for (const s of SPORTS) {
+    let events: ApiEvent[] = [];
+    try {
+      events = await fetchSport(s.key, apiKey);
+    } catch (e) {
+      console.error("[odds-api] sport fetch failed", s.key, e);
+      continue;
+    }
+
+    for (const ev of events) {
+      const gameExt = `odds-api:${ev.id}`;
+      const { data: gameRow, error: gErr } = await supabaseAdmin
+        .from("games")
+        .upsert(
+          {
+            external_id: gameExt,
+            sport: s.sport,
+            league: s.league,
+            home_team: ev.home_team,
+            away_team: ev.away_team,
+            start_time: ev.commence_time,
+            status: "scheduled",
+          },
+          { onConflict: "external_id" },
+        )
+        .select("id")
+        .single();
+      if (gErr || !gameRow) {
+        console.error("[odds-api] upsert game failed", ev.id, gErr);
+        continue;
+      }
+      totalGames++;
+
+      const book = ev.bookmakers?.[0];
+      if (!book) continue;
+
+      const rows: Array<{
+        external_id: string;
+        game_id: string;
+        market: string;
+        selection: string;
+        label: string;
+        price: number;
+      }> = [];
+
+      for (const m of book.markets ?? []) {
+        if (m.key === "h2h") {
+          for (const o of m.outcomes) {
+            const side = o.name === ev.home_team ? "home" : "away";
+            rows.push({
+              external_id: `${gameExt}:moneyline:${side}`,
+              game_id: gameRow.id,
+              market: "moneyline",
+              selection: side,
+              label: `${o.name} ML`,
+              price: toAmerican(o.price),
+            });
+          }
+        } else if (m.key === "spreads") {
+          for (const o of m.outcomes) {
+            const side = o.name === ev.home_team ? "home" : "away";
+            const pt = o.point ?? 0;
+            rows.push({
+              external_id: `${gameExt}:spread:${side}`,
+              game_id: gameRow.id,
+              market: "spread",
+              selection: side,
+              label: `${o.name} ${pt > 0 ? "+" : ""}${pt}`,
+              price: toAmerican(o.price),
+            });
+          }
+        } else if (m.key === "totals") {
+          for (const o of m.outcomes) {
+            const side = o.name.toLowerCase() === "over" ? "over" : "under";
+            const pt = o.point ?? 0;
+            rows.push({
+              external_id: `${gameExt}:total:${side}`,
+              game_id: gameRow.id,
+              market: "total",
+              selection: side,
+              label: `${side === "over" ? "O" : "U"} ${pt}`,
+              price: toAmerican(o.price),
+            });
+          }
+        }
+      }
+
+      if (rows.length) {
+        const { error: oErr } = await supabaseAdmin
+          .from("odds")
+          .upsert(rows, { onConflict: "external_id" });
+        if (oErr) console.error("[odds-api] upsert odds failed", ev.id, oErr);
+      }
+    }
+  }
+
+  return { synced: totalGames, source: "the-odds-api" };
+}
+
+export const syncLiveOdds = createServerFn({ method: "POST" }).handler(async () => {
+  const now = Date.now();
+  if (now - lastSyncAt < CACHE_TTL_MS) {
+    return { cached: true, ageMs: now - lastSyncAt };
+  }
+  if (inflight) {
+    const r = await inflight;
+    return { cached: false, ...r };
+  }
+  inflight = syncOnce()
+    .then((r) => {
+      lastSyncAt = Date.now();
+      return r;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  try {
+    const r = await inflight;
+    return { cached: false, ...r };
+  } catch (e: any) {
+    return { cached: false, error: e?.message ?? "sync failed" };
+  }
+});
