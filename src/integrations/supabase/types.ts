@@ -76,6 +76,7 @@ export type Database = {
           away_logo_url: string | null
           away_team: string
           created_at: string
+          external_id: string | null
           home_logo_url: string | null
           home_team: string
           id: string
@@ -89,6 +90,7 @@ export type Database = {
           away_logo_url?: string | null
           away_team: string
           created_at?: string
+          external_id?: string | null
           home_logo_url?: string | null
           home_team: string
           id?: string
@@ -102,6 +104,7 @@ export type Database = {
           away_logo_url?: string | null
           away_team?: string
           created_at?: string
+          external_id?: string | null
           home_logo_url?: string | null
           home_team?: string
           id?: string
@@ -116,6 +119,7 @@ export type Database = {
       odds: {
         Row: {
           created_at: string
+          external_id: string | null
           game_id: string
           id: string
           label: string
@@ -125,6 +129,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          external_id?: string | null
           game_id: string
           id?: string
           label: string
@@ -134,6 +139,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          external_id?: string | null
           game_id?: string
           id?: string
           label?: string
