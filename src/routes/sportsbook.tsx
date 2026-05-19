@@ -20,7 +20,7 @@ function Sportsbook() {
 
   const syncQ = useQuery({
     queryKey: ["odds-sync"],
-    queryFn: () => sync({ data: undefined as any }),
+    queryFn: () => sync(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
