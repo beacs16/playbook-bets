@@ -13,6 +13,9 @@ export type GameWithOdds = {
   home_logo_url?: string | null;
   away_logo_url?: string | null;
   external_id?: string | null;
+  status?: string | null;
+  home_score?: number | null;
+  away_score?: number | null;
   odds: { id: string; market: string; selection: string; label: string; price: number }[];
 };
 
@@ -20,6 +23,9 @@ export function GameCard({ game }: { game: GameWithOdds }) {
   const { add, remove, has } = useBetSlip();
   const matchup = `${game.away_team} @ ${game.home_team}`;
   const isLive = !!game.external_id && game.external_id.startsWith("odds-api:");
+  const hasScore = game.home_score != null && game.away_score != null;
+  const isFinal = game.status === "final";
+  const inProgress = hasScore && !isFinal && new Date(game.start_time).getTime() <= Date.now();
 
   const get = (market: string, selection: string) =>
     game.odds.find((o) => o.market === market && o.selection === selection);
@@ -38,6 +44,7 @@ export function GameCard({ game }: { game: GameWithOdds }) {
     const sp = get("spread", side);
     const tot = get("total", side === "home" ? "over" : "under");
     const logo = side === "home" ? game.home_logo_url : game.away_logo_url;
+    const score = side === "home" ? game.home_score : game.away_score;
     return (
       <div className="grid grid-cols-[1fr_repeat(3,_minmax(0,72px))] items-center gap-2 py-2 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -47,6 +54,9 @@ export function GameCard({ game }: { game: GameWithOdds }) {
             <div className="h-7 w-7 shrink-0 rounded-full bg-secondary/60" />
           )}
           <span className="truncate font-medium">{team}</span>
+          {hasScore && (
+            <span className="ml-auto pr-1 text-sm font-bold tabular-nums text-foreground">{score}</span>
+          )}
         </div>
         <OddsButton label="Spread" price={sp?.price ?? 0} selected={sp ? has(sp.id) : false}
           onClick={() => toggle(sp)} />
@@ -68,6 +78,12 @@ export function GameCard({ game }: { game: GameWithOdds }) {
             <Badge className="rounded-full bg-success/15 text-success border border-success/30 text-[10px] font-bold uppercase tracking-widest">● Live Odds</Badge>
           ) : (
             <Badge className="rounded-full bg-accent/15 text-accent border border-accent/30 text-[10px] font-bold uppercase tracking-widest">Demo / Simulated</Badge>
+          )}
+          {inProgress && (
+            <Badge className="rounded-full bg-destructive/15 text-destructive border border-destructive/30 text-[10px] font-bold uppercase tracking-widest animate-pulse">● Live</Badge>
+          )}
+          {isFinal && (
+            <Badge className="rounded-full bg-muted text-muted-foreground border border-border text-[10px] font-bold uppercase tracking-widest">Final</Badge>
           )}
         </div>
         <time className="text-xs font-medium text-muted-foreground tabular-nums">
