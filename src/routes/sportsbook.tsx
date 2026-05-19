@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { TrendingUp, AlertTriangle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/sportsbook")({
   head: () => ({ meta: [{ title: "Sportsbook — PlayBook" }, { name: "description", content: "Browse upcoming games and place virtual bets across NBA, NFL, EPL, MLB, NHL." }] }),
@@ -16,6 +18,7 @@ export const Route = createFileRoute("/sportsbook")({
 
 function Sportsbook() {
   const [sport, setSport] = useState<string>("All");
+  const [demoMode, setDemoMode] = useState(false);
   const sync = useServerFn(syncLiveOdds);
 
   const syncQ = useQuery({
@@ -32,7 +35,7 @@ function Sportsbook() {
     queryFn: async (): Promise<GameWithOdds[]> => {
       const { data: games, error } = await supabase
         .from("games")
-        .select("id, sport, league, home_team, away_team, start_time, home_logo_url, away_logo_url, odds(id, market, selection, label, price)")
+        .select("id, sport, league, home_team, away_team, start_time, home_logo_url, away_logo_url, external_id, odds(id, market, selection, label, price)")
         .eq("status", "scheduled")
         .order("start_time", { ascending: true });
       if (error) throw error;
@@ -40,22 +43,48 @@ function Sportsbook() {
     },
   });
 
-  const sports = ["All", ...Array.from(new Set((data ?? []).map((g) => g.sport)))];
-  const filtered = (data ?? []).filter((g) => sport === "All" || g.sport === sport);
+  const now = Date.now();
+  const visible = (data ?? []).filter((g) => {
+    const isLive =
+      !!g.external_id &&
+      g.external_id.startsWith("odds-api:") &&
+      !!g.start_time &&
+      !isNaN(new Date(g.start_time).getTime()) &&
+      new Date(g.start_time).getTime() > now;
+    return demoMode ? !isLive : isLive;
+  });
+  const sports = ["All", ...Array.from(new Set(visible.map((g) => g.sport)))];
+  const filtered = visible.filter((g) => sport === "All" || g.sport === sport);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 animate-fade-in">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-            <TrendingUp className="h-3 w-3" /> Live markets · The Odds API
-          </div>
+          {demoMode ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-accent">
+              Demo Mode · Simulated Games
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+              <TrendingUp className="h-3 w-3" /> Live Odds · The Odds API
+            </div>
+          )}
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Sportsbook</h1>
-          <p className="text-sm text-muted-foreground">Real upcoming NBA, NFL, MLB & NHL games. Virtual currency only — no real-money gambling.</p>
+          <p className="text-sm text-muted-foreground">
+            {demoMode
+              ? "Simulated test games — not real matchups. Virtual currency only."
+              : "Real upcoming NBA, NFL, MLB & NHL games. Virtual currency only — no real-money gambling."}
+          </p>
         </div>
-        <div className="hidden text-right text-xs text-muted-foreground sm:block">
-          <div className="font-bold text-foreground">{filtered.length} games</div>
-          <div>{sport === "All" ? "All sports" : sport}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1.5">
+            <Switch id="demo-mode" checked={demoMode} onCheckedChange={setDemoMode} />
+            <Label htmlFor="demo-mode" className="text-xs font-semibold uppercase tracking-wider cursor-pointer">Demo Mode</Label>
+          </div>
+          <div className="hidden text-right text-xs text-muted-foreground sm:block">
+            <div className="font-bold text-foreground">{filtered.length} games</div>
+            <div>{sport === "All" ? "All sports" : sport}</div>
+          </div>
         </div>
       </header>
 

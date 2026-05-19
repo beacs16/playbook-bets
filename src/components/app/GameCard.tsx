@@ -12,12 +12,14 @@ export type GameWithOdds = {
   start_time: string;
   home_logo_url?: string | null;
   away_logo_url?: string | null;
+  external_id?: string | null;
   odds: { id: string; market: string; selection: string; label: string; price: number }[];
 };
 
 export function GameCard({ game }: { game: GameWithOdds }) {
   const { add, remove, has } = useBetSlip();
   const matchup = `${game.away_team} @ ${game.home_team}`;
+  const isLive = !!game.external_id && game.external_id.startsWith("odds-api:");
 
   const get = (market: string, selection: string) =>
     game.odds.find((o) => o.market === market && o.selection === selection);
@@ -62,6 +64,11 @@ export function GameCard({ game }: { game: GameWithOdds }) {
         <div className="flex items-center gap-2 text-xs">
           <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold tracking-wide">{game.league}</Badge>
           <span className="text-muted-foreground uppercase text-[10px] tracking-widest">{game.sport}</span>
+          {isLive ? (
+            <Badge className="rounded-full bg-success/15 text-success border border-success/30 text-[10px] font-bold uppercase tracking-widest">● Live Odds</Badge>
+          ) : (
+            <Badge className="rounded-full bg-accent/15 text-accent border border-accent/30 text-[10px] font-bold uppercase tracking-widest">Demo / Simulated</Badge>
+          )}
         </div>
         <time className="text-xs font-medium text-muted-foreground tabular-nums">
           {format(new Date(game.start_time), "EEE, MMM d • h:mm a")}
